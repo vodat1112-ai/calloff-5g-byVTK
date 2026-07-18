@@ -1,0 +1,1065 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1">
+<title>Tra cứu Call Off 5G</title>
+<meta name="description" content="Tra cứu thông số trạm 5G: sector, azimuth, tilt, độ cao AAU, tọa độ GPS.">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+  :root{
+    --ink:#132033;
+    --ink-soft:#4a5a70;
+    --line:#dde3ea;
+    --line-soft:#eef1f5;
+    --paper:#ffffff;
+    --floor:#f5f7fa;
+    --brand:#0e6e5c;
+    --brand-dark:#0a5346;
+    --brand-soft:#e5f3ef;
+    --amber:#b6720b;
+    --amber-soft:#fbf1de;
+    --radius:10px;
+    --mono:"IBM Plex Mono","SFMono-Regular",Consolas,monospace;
+    --sans:"IBM Plex Sans","Segoe UI",Helvetica,Arial,sans-serif;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0}
+  body{
+    font-family:var(--sans);
+    background:var(--floor);
+    color:var(--ink);
+    -webkit-font-smoothing:antialiased;
+    padding-bottom:60px;
+  }
+  a{color:var(--brand-dark)}
+
+  /* ---------- top bar ---------- */
+  header.topbar{
+    background:var(--paper);
+    border-bottom:1px solid var(--line);
+    padding:18px clamp(16px,4vw,40px);
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:16px;
+    flex-wrap:wrap;
+    position:sticky;
+    top:0;
+    z-index:20;
+  }
+  .brand{
+    display:flex;
+    align-items:center;
+    gap:10px;
+  }
+  .brand .mark{
+    width:34px;height:34px;border-radius:8px;
+    background:var(--brand);
+    display:flex;align-items:center;justify-content:center;
+    flex-shrink:0;
+  }
+  .brand .mark svg{width:18px;height:18px}
+  .brand-text h1{
+    font-size:15px;margin:0;font-weight:700;letter-spacing:.2px;
+  }
+  .brand-text p{
+    margin:0;font-size:11.5px;color:var(--ink-soft);
+    font-family:var(--mono);
+  }
+  .file-controls{
+    display:flex;align-items:center;gap:10px;flex-wrap:wrap;
+    font-size:13px;
+  }
+  .file-status{
+    display:flex;align-items:center;gap:8px;
+    font-size:12.5px;color:var(--ink-soft);
+    background:var(--floor);
+    border:1px solid var(--line);
+    padding:6px 10px 6px 8px;
+    border-radius:99px;
+  }
+  .file-status .dot{width:7px;height:7px;border-radius:50%;background:#c7cdd6;flex-shrink:0}
+  .file-status.ok .dot{background:var(--brand)}
+  .btn{
+    font-family:var(--sans);
+    font-size:13px;
+    font-weight:600;
+    padding:8px 14px;
+    border-radius:8px;
+    border:1px solid var(--line);
+    background:var(--paper);
+    color:var(--ink);
+    cursor:pointer;
+    display:inline-flex;align-items:center;gap:6px;
+    transition:border-color .15s, background .15s;
+    white-space:nowrap;
+  }
+  .btn:hover{border-color:#b7c0cc;background:var(--floor)}
+  .btn.primary{
+    background:var(--brand);
+    border-color:var(--brand);
+    color:#fff;
+  }
+  .btn.primary:hover{background:var(--brand-dark);border-color:var(--brand-dark)}
+  .btn.ghost{border-color:transparent;background:transparent;color:var(--ink-soft);padding:8px 8px}
+  .btn.ghost:hover{background:var(--line-soft);color:var(--ink)}
+  .btn:disabled{opacity:.45;cursor:not-allowed}
+  .btn svg{width:14px;height:14px;flex-shrink:0}
+  input[type=file]{display:none}
+
+  /* ---------- main ---------- */
+  main{
+    max-width:980px;
+    margin:0 auto;
+    padding:clamp(20px,4vw,36px) clamp(16px,4vw,40px);
+  }
+
+  .empty-state{
+    text-align:center;
+    padding:70px 20px;
+    color:var(--ink-soft);
+  }
+  .empty-state .mark-lg{
+    width:56px;height:56px;border-radius:14px;background:var(--brand-soft);
+    display:flex;align-items:center;justify-content:center;margin:0 auto 18px;
+  }
+  .empty-state .mark-lg svg{width:26px;height:26px;color:var(--brand)}
+  .empty-state h2{font-size:17px;color:var(--ink);margin:0 0 6px}
+  .empty-state p{font-size:13.5px;line-height:1.6;max-width:420px;margin:0 auto 22px}
+
+  /* ---------- search ---------- */
+  .search-wrap{position:relative;margin-bottom:22px}
+  .search-box{
+    display:flex;align-items:center;gap:10px;
+    background:var(--paper);
+    border:1.5px solid var(--line);
+    border-radius:12px;
+    padding:4px 6px 4px 16px;
+    transition:border-color .15s, box-shadow .15s;
+  }
+  .search-box:focus-within{
+    border-color:var(--brand);
+    box-shadow:0 0 0 3px var(--brand-soft);
+  }
+  .search-box svg.icon{width:17px;height:17px;color:var(--ink-soft);flex-shrink:0}
+  .search-box input{
+    flex:1;border:none;outline:none;background:transparent;
+    font-family:var(--mono);
+    font-size:16px;
+    padding:12px 0;
+    color:var(--ink);
+    text-transform:uppercase;
+    min-width:0;
+  }
+  .search-box input::placeholder{color:#a7b0bd;text-transform:none;font-family:var(--sans)}
+  .search-box .clear-btn{
+    border:none;background:transparent;color:var(--ink-soft);cursor:pointer;
+    width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;
+    flex-shrink:0;
+  }
+  .search-box .clear-btn:hover{background:var(--line-soft)}
+  .search-box .clear-btn svg{width:14px;height:14px}
+  .search-box button.go{
+    flex-shrink:0;
+  }
+
+  .suggest{
+    position:absolute;left:0;right:0;top:calc(100% + 6px);
+    background:var(--paper);
+    border:1px solid var(--line);
+    border-radius:10px;
+    box-shadow:0 10px 30px rgba(19,32,51,.10);
+    overflow:hidden;
+    z-index:15;
+    max-height:320px;
+    overflow-y:auto;
+  }
+  .suggest button{
+    display:flex;justify-content:space-between;align-items:center;
+    width:100%;text-align:left;padding:10px 16px;
+    border:none;background:transparent;cursor:pointer;
+    font-family:var(--mono);font-size:13.5px;color:var(--ink);
+    border-bottom:1px solid var(--line-soft);
+  }
+  .suggest button:last-child{border-bottom:none}
+  .suggest button:hover, .suggest button.active{background:var(--brand-soft)}
+  .suggest button .tag{
+    font-family:var(--sans);font-size:11px;color:var(--ink-soft);
+    background:var(--floor);padding:2px 7px;border-radius:99px;
+  }
+
+  .not-found{
+    background:var(--amber-soft);
+    border:1px solid #f0dcb0;
+    border-radius:10px;
+    padding:16px 18px;
+    font-size:13.5px;
+    color:#7a5205;
+    line-height:1.6;
+  }
+
+  /* ---------- results ---------- */
+  .result{
+    display:flex;flex-direction:column;gap:16px;
+  }
+  .station-head{
+    display:flex;justify-content:space-between;align-items:flex-start;
+    gap:16px;flex-wrap:wrap;
+  }
+  .station-head h2{
+    font-family:var(--mono);
+    font-size:26px;
+    margin:0;
+    letter-spacing:-.02em;
+  }
+  .station-head .province{
+    font-size:12.5px;color:var(--ink-soft);
+    text-transform:uppercase;letter-spacing:.06em;
+    margin-top:4px;
+  }
+  .station-head .counts{
+    display:flex;gap:8px;flex-wrap:wrap;
+  }
+  .pill{
+    font-size:11.5px;font-weight:600;
+    padding:5px 10px;border-radius:99px;
+    background:var(--brand-soft);color:var(--brand-dark);
+    border:1px solid #cfe7df;
+  }
+
+  .card{
+    background:var(--paper);
+    border:1px solid var(--line);
+    border-radius:var(--radius);
+    overflow:hidden;
+  }
+  .card .card-head{
+    padding:13px 18px;
+    border-bottom:1px solid var(--line);
+    display:flex;align-items:center;justify-content:space-between;
+    gap:10px;flex-wrap:wrap;
+  }
+  .card .card-head h3{
+    font-size:12.5px;margin:0;
+    text-transform:uppercase;letter-spacing:.07em;
+    color:var(--ink-soft);
+    font-weight:700;
+  }
+  .card .card-body{padding:18px}
+
+  /* coordinate card */
+  .coord-row{
+    display:flex;align-items:center;gap:12px;flex-wrap:wrap;
+  }
+  .coord-value{
+    font-family:var(--mono);
+    font-size:15px;
+    background:var(--floor);
+    border:1px solid var(--line);
+    padding:9px 12px;
+    border-radius:8px;
+    flex:1;min-width:200px;
+  }
+  .coord-actions{display:flex;gap:8px;flex-wrap:wrap}
+
+  /* info grid (DS TRAM) */
+  .info-grid{
+    display:grid;
+    grid-template-columns:repeat(auto-fill,minmax(190px,1fr));
+    gap:14px 18px;
+  }
+  .info-item .label{
+    font-size:11px;color:var(--ink-soft);
+    text-transform:uppercase;letter-spacing:.05em;
+    margin-bottom:4px;
+  }
+  .info-item .value{
+    font-size:14.5px;font-weight:600;
+    word-break:break-word;
+  }
+  .info-item .value.mono{font-family:var(--mono);font-weight:500}
+
+  /* sector cards */
+  .sector-grid{
+    display:grid;
+    grid-template-columns:repeat(auto-fit,minmax(150px,1fr));
+    gap:12px;
+    margin-bottom:14px;
+  }
+  .sector-card{
+    border:1px solid var(--line);
+    border-radius:9px;
+    padding:14px 14px 12px;
+    background:var(--floor);
+    position:relative;
+  }
+  .sector-card .sector-num{
+    font-family:var(--mono);
+    font-size:11px;font-weight:700;
+    color:var(--brand-dark);
+    background:var(--brand-soft);
+    display:inline-block;
+    padding:2px 8px;
+    border-radius:99px;
+    margin-bottom:10px;
+  }
+  .sector-card .az-big{
+    font-family:var(--mono);
+    font-size:22px;font-weight:600;
+    line-height:1;
+    margin-bottom:2px;
+  }
+  .sector-card .az-label{font-size:10.5px;color:var(--ink-soft);margin-bottom:10px}
+  .sector-card .mini-row{
+    display:flex;justify-content:space-between;
+    font-size:12px;padding:3px 0;
+    border-top:1px dashed var(--line);
+  }
+  .sector-card .mini-row:first-of-type{border-top:none;padding-top:0}
+  .sector-card .mini-row span:first-child{color:var(--ink-soft)}
+  .sector-card .mini-row span:last-child{font-family:var(--mono);font-weight:600}
+
+  /* generic table for full detail + extra columns */
+  table.detail{
+    width:100%;border-collapse:collapse;font-size:13px;
+  }
+  table.detail th, table.detail td{
+    text-align:left;padding:8px 10px;border-bottom:1px solid var(--line-soft);
+    white-space:nowrap;
+  }
+  table.detail th{
+    color:var(--ink-soft);font-weight:600;font-size:11px;
+    text-transform:uppercase;letter-spacing:.04em;
+    background:var(--floor);
+    position:sticky;top:0;
+  }
+  table.detail td{font-family:var(--mono)}
+  .table-scroll{overflow-x:auto;border-radius:0 0 var(--radius) var(--radius)}
+
+  details.extra{border-top:1px solid var(--line)}
+  details.extra summary{
+    cursor:pointer;padding:12px 18px;font-size:12.5px;color:var(--ink-soft);
+    list-style:none;display:flex;align-items:center;gap:6px;
+    user-select:none;
+  }
+  details.extra summary::-webkit-details-marker{display:none}
+  details.extra summary svg{width:12px;height:12px;transition:transform .15s}
+  details[open] summary svg{transform:rotate(90deg)}
+
+  .toast{
+    position:fixed;bottom:22px;left:50%;transform:translateX(-50%) translateY(20px);
+    background:var(--ink);color:#fff;font-size:13px;font-weight:600;
+    padding:10px 18px;border-radius:99px;
+    opacity:0;pointer-events:none;
+    transition:opacity .2s, transform .2s;
+    z-index:100;
+    display:flex;align-items:center;gap:8px;
+  }
+  .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+  .toast svg{width:14px;height:14px}
+
+  footer.note{
+    max-width:980px;margin:40px auto 0;padding:0 clamp(16px,4vw,40px);
+    font-size:12px;color:var(--ink-soft);line-height:1.7;
+  }
+
+  @media (max-width:560px){
+    .station-head h2{font-size:21px}
+    .search-box input{font-size:15px}
+    header.topbar{padding:14px 16px}
+    .brand-text p{display:none}
+  }
+
+  /* drop zone overlay */
+  .dropzone{
+    display:none;
+    position:fixed;inset:0;background:rgba(14,110,92,.08);
+    border:3px dashed var(--brand);
+    z-index:200;
+    align-items:center;justify-content:center;
+    font-weight:700;color:var(--brand-dark);font-size:18px;
+  }
+  .dropzone.active{display:flex}
+</style>
+</head>
+<body>
+
+<div class="dropzone" id="dropzone">Thả file Excel vào đây để tải lên</div>
+
+<header class="topbar">
+  <div class="brand">
+    <div class="mark">
+      <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v6M12 16v6M2 12h6M16 12h6"/><circle cx="12" cy="12" r="3"/></svg>
+    </div>
+    <div class="brand-text">
+      <h1>Tra cứu Call Off 5G</h1>
+      <p id="sheetMeta">Chưa có dữ liệu</p>
+    </div>
+  </div>
+  <div class="file-controls">
+    <span class="file-status" id="fileStatus"><span class="dot"></span><span id="fileStatusText">Chưa tải file</span></span>
+    <label class="btn primary" for="fileInput">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+      Tải file Excel
+    </label>
+    <input type="file" id="fileInput" accept=".xlsx,.xls">
+    <button class="btn ghost" id="resetDefaultBtn" title="Dùng lại file mặc định trong repo">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></svg>
+    </button>
+    <button class="btn ghost" id="clearDataBtn" title="Xóa dữ liệu đã lưu" style="display:none">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/></svg>
+    </button>
+  </div>
+</header>
+
+<main id="main">
+  <div class="empty-state" id="emptyState">
+    <div class="mark-lg">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16v16H4z" opacity="0"/><path d="M12 2v6M12 16v6M2 12h6M16 12h6"/><circle cx="12" cy="12" r="3"/></svg>
+    </div>
+    <h2>Chưa có dữ liệu</h2>
+    <p>Tải lên file Excel Call Off 5G (2 sheet "DS TRẠM" và "CALL OFF") để bắt đầu tra cứu mã trạm. File sẽ được xử lý ngay trên trình duyệt, không upload lên máy chủ nào.</p>
+    <label class="btn primary" for="fileInput" style="display:inline-flex">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+      Chọn file Excel
+    </label>
+  </div>
+
+  <div id="app" style="display:none">
+    <div class="search-wrap">
+      <div class="search-box">
+        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        <input type="text" id="searchInput" placeholder="Nhập mã trạm, ví dụ: DTP0003-11" autocomplete="off" spellcheck="false">
+        <button class="clear-btn" id="clearSearch" style="display:none">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
+        <button class="btn primary go" id="searchBtn">Tìm</button>
+      </div>
+      <div class="suggest" id="suggest" style="display:none"></div>
+    </div>
+
+    <div id="resultsArea"></div>
+  </div>
+</main>
+
+<footer class="note" id="footerNote" style="display:none">
+  Dữ liệu được đọc trực tiếp từ file Excel trên thiết bị của bạn (không gửi lên server). Khi file có thêm cột mới (ví dụ tọa độ), công cụ sẽ tự động hiển thị thêm mà không cần cập nhật code.
+</footer>
+
+<div class="toast" id="toast">
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+  <span id="toastText">Đã sao chép</span>
+</div>
+
+<script>
+(function(){
+"use strict";
+
+/* ============================================================
+   CONFIG — chỉnh ở đây nếu cấu trúc file Excel thay đổi
+   ============================================================ */
+const CONFIG = {
+  sheetTram: "DS TRẠM",       // sheet thông tin trạm / nhân viên
+  sheetCallOff: "CALL OFF",   // sheet call off 5G (sector / azimuth / tilt...)
+  maxHeaderRowsToTry: 3,      // tự dò xem sheet có 1 hay nhiều dòng tiêu đề (kể cả có merge cell hay không)
+  stationCodeAliases: ["mã nhà trạm","mã trạm","ma nha tram","ma tram"],
+  sectorGroupAliases: ["ghép sector","ghep sector"],
+  provinceAliases: ["tỉnh","tinh"],
+  storageKey: "callOff5G_lastFile_v1",
+  defaultFileUrl: "./data/TH_Calloff_5G.xlsx",
+  defaultFileLabel: "TH_Calloff_5G.xlsx (mặc định)"
+};
+
+/* ============================================================
+   STATE
+   ============================================================ */
+let DB = {
+  tramHeaders: [],
+  tramRows: [],            // array of {__map: Map(headerLower->value), raw:[...]}
+  tramIndex: new Map(),    // code(upper) -> row
+  callHeaders: [],
+  callRows: [],
+  callIndex: new Map(),    // code(upper) -> [rows]
+  allCodes: [],            // sorted unique station codes (union of both sheets)
+  fileName: ""
+};
+
+/* ============================================================
+   HELPERS
+   ============================================================ */
+function stripTones(str){
+  if(str===null||str===undefined) return "";
+  str = String(str);
+  str = str.normalize("NFD").replace(/[\u0300-\u036f]/g,"");
+  str = str.replace(/đ/g,"d").replace(/Đ/g,"D");
+  return str;
+}
+function norm(str){
+  return stripTones(String(str||"")).toLowerCase().trim().replace(/\s+/g," ");
+}
+function normCode(str){
+  return String(str||"").trim().toUpperCase().replace(/\s+/g,"");
+}
+function escapeHtml(s){
+  return String(s===undefined||s===null?"":s).replace(/[&<>"']/g, c=>({
+    "&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"
+  }[c]));
+}
+function isNum(v){ return v!==null && v!==undefined && v!=="" && !isNaN(v); }
+
+function findHeaderIndex(headers, aliases){
+  for(let i=0;i<headers.length;i++){
+    const h = norm(headers[i]);
+    if(aliases.some(a=>h===norm(a))) return i;
+  }
+  // fallback: partial match
+  for(let i=0;i<headers.length;i++){
+    const h = norm(headers[i]);
+    if(aliases.some(a=>h.includes(norm(a)))) return i;
+  }
+  return -1;
+}
+// exact match only — used for auto-detecting how many header rows a sheet has
+function findHeaderIndexExact(headers, aliases){
+  for(let i=0;i<headers.length;i++){
+    const h = norm(headers[i]);
+    if(aliases.some(a=>h===norm(a))) return i;
+  }
+  return -1;
+}
+// a "station code" cell always mixes letters and digits (e.g. DTP0003-11) —
+// used to confirm we've found the real data row, not another header row
+function looksLikeStationCode(v){
+  if(v===undefined||v===null) return false;
+  const s = String(v).trim();
+  if(s.length<3 || s.length>30) return false;
+  return /[0-9]/.test(s) && /[A-Za-zÀ-ỹ]/.test(s);
+}
+// try 1, 2, 3... header rows and pick the smallest count where:
+//  (a) the "mã nhà trạm" column can be found by exact header match, and
+//  (b) the row right after the header actually looks like station-code data
+// this makes the app work whether the sheet has a single header row,
+// or multiple merged header rows (old-style Excel export).
+function detectHeaderRowCount(rawRows){
+  for(let n=1; n<=CONFIG.maxHeaderRowsToTry; n++){
+    const headers = buildHeaders(rawRows, n);
+    const idx = findHeaderIndexExact(headers, CONFIG.stationCodeAliases);
+    if(idx===-1) continue;
+    const nextRow = rawRows[n];
+    if(nextRow && looksLikeStationCode(nextRow[idx])) return n;
+  }
+  return 1; // fallback
+}
+
+// detect lat / lon columns anywhere in a header list
+function findCoordIndices(headers){
+  let latIdx=-1, lonIdx=-1;
+  headers.forEach((h,i)=>{
+    const n = norm(h);
+    if(latIdx===-1 && (/toa\s*do\s*x/.test(n) || /^x$/.test(n) || /vi\s*do/.test(n) || /^lat/.test(n))) latIdx = i;
+    if(lonIdx===-1 && (/toa\s*do\s*y/.test(n) || /^y$/.test(n) || /kinh\s*do/.test(n) || /^lon/.test(n) || /^lng/.test(n))) lonIdx = i;
+  });
+  return {latIdx, lonIdx};
+}
+
+function toast(msg){
+  const t = document.getElementById("toast");
+  document.getElementById("toastText").textContent = msg;
+  t.classList.add("show");
+  clearTimeout(toast._t);
+  toast._t = setTimeout(()=>t.classList.remove("show"), 1800);
+}
+
+function copyText(text, msg){
+  navigator.clipboard.writeText(text).then(()=>toast(msg||"Đã sao chép"))
+    .catch(()=>{
+      const ta = document.createElement("textarea");
+      ta.value = text; document.body.appendChild(ta); ta.select();
+      try{ document.execCommand("copy"); toast(msg||"Đã sao chép"); }catch(e){}
+      document.body.removeChild(ta);
+    });
+}
+
+/* ============================================================
+   PARSE WORKBOOK
+   ============================================================ */
+function buildHeaders(rows, headerRowCount){
+  // rows: array-of-arrays (raw). Combine N header rows: deeper row wins if non-empty.
+  const width = Math.max(...rows.slice(0,headerRowCount).map(r=>r.length), 0);
+  const headers = [];
+  for(let c=0;c<width;c++){
+    let val = "";
+    for(let r=0;r<headerRowCount;r++){
+      const cell = rows[r] ? rows[r][c] : undefined;
+      if(cell!==undefined && cell!==null && String(cell).trim()!==""){
+        val = String(cell).trim(); // deepest non-empty wins
+      }
+    }
+    headers.push(val || ("Cột "+(c+1)));
+  }
+  return headers;
+}
+
+function rowsToObjects(rows, headerRowCount, headers){
+  const out = [];
+  for(let r=headerRowCount; r<rows.length; r++){
+    const raw = rows[r];
+    if(!raw || raw.every(c=>c===undefined||c===null||String(c).trim()==="")) continue;
+    const obj = {};
+    headers.forEach((h,i)=> obj[h] = raw[i]!==undefined ? raw[i] : "");
+    out.push(obj);
+  }
+  return out;
+}
+
+function parseWorkbook(wb){
+  const tramSheet = wb.Sheets[CONFIG.sheetTram];
+  const callSheet = wb.Sheets[CONFIG.sheetCallOff];
+  if(!tramSheet || !callSheet){
+    throw new Error(`Không tìm thấy sheet "${CONFIG.sheetTram}" hoặc "${CONFIG.sheetCallOff}" trong file.`);
+  }
+  const tramRaw = XLSX.utils.sheet_to_json(tramSheet, {header:1, raw:true, defval:""});
+  const callRaw = XLSX.utils.sheet_to_json(callSheet, {header:1, raw:true, defval:""});
+
+  const tramHeaderRows = detectHeaderRowCount(tramRaw);
+  const callHeaderRows = detectHeaderRowCount(callRaw);
+
+  const tramHeaders = buildHeaders(tramRaw, tramHeaderRows);
+  const callHeaders = buildHeaders(callRaw, callHeaderRows);
+
+  const tramRows = rowsToObjects(tramRaw, tramHeaderRows, tramHeaders);
+  const callRows = rowsToObjects(callRaw, callHeaderRows, callHeaders);
+
+  const tramCodeIdx = findHeaderIndex(tramHeaders, CONFIG.stationCodeAliases);
+  const callCodeIdx = findHeaderIndex(callHeaders, CONFIG.stationCodeAliases);
+  if(tramCodeIdx===-1 || callCodeIdx===-1){
+    throw new Error("Không tìm thấy cột 'Mã nhà trạm' trong một trong hai sheet.");
+  }
+  const tramCodeKey = tramHeaders[tramCodeIdx];
+  const callCodeKey = callHeaders[callCodeIdx];
+
+  const tramIndex = new Map();
+  tramRows.forEach(row=>{
+    const code = normCode(row[tramCodeKey]);
+    if(code) tramIndex.set(code, row);
+  });
+
+  const callIndex = new Map();
+  callRows.forEach(row=>{
+    const code = normCode(row[callCodeKey]);
+    if(!code) return;
+    if(!callIndex.has(code)) callIndex.set(code, []);
+    callIndex.get(code).push(row);
+  });
+
+  const allCodesSet = new Set([...tramIndex.keys(), ...callIndex.keys()]);
+  const allCodes = Array.from(allCodesSet).sort();
+
+  return {
+    tramHeaders, tramRows, tramIndex, tramCodeKey,
+    callHeaders, callRows, callIndex, callCodeKey,
+    allCodes
+  };
+}
+
+/* ============================================================
+   RENDER
+   ============================================================ */
+const KNOWN_TRAM_KEYS = ["mã nhà trạm","mã trạm"];
+const KNOWN_CALL_SKIP = []; // columns handled specially, excluded from "extra" table
+
+function getSectorLabel(sectorGroupVal, code){
+  if(!sectorGroupVal) return "";
+  const s = String(sectorGroupVal);
+  const m = s.match(/_(\d+)\s*$/);
+  return m ? m[1] : s.replace(code,"").replace(/^_/,"");
+}
+
+function findVal(row, headers, aliases){
+  const idx = findHeaderIndex(headers, aliases);
+  if(idx===-1) return {val:undefined, key:undefined};
+  const key = headers[idx];
+  return {val: row[key], key};
+}
+
+function renderResults(code){
+  const area = document.getElementById("resultsArea");
+  const upper = normCode(code);
+  const tramRow = DB.tramIndex.get(upper);
+  const callRowsList = (DB.callIndex.get(upper) || []).slice();
+
+  if(!tramRow && callRowsList.length===0){
+    area.innerHTML = `<div class="not-found">
+      Không tìm thấy mã trạm <strong>${escapeHtml(code)}</strong>. Kiểm tra lại chính tả, hoặc chọn từ danh sách gợi ý khi gõ.
+    </div>`;
+    return;
+  }
+
+  // sort sectors by suffix number if possible
+  const { key: sectorKey } = findVal(callRowsList[0]||{}, DB.callHeaders, CONFIG.sectorGroupAliases);
+  callRowsList.sort((a,b)=>{
+    const la = getSectorLabel(sectorKey? a[sectorKey]:"", upper);
+    const lb = getSectorLabel(sectorKey? b[sectorKey]:"", upper);
+    return String(la).localeCompare(String(lb), undefined, {numeric:true});
+  });
+
+  // province
+  let province = "";
+  if(callRowsList.length){
+    const pv = findVal(callRowsList[0], DB.callHeaders, CONFIG.provinceAliases);
+    province = pv.val || "";
+  }
+
+  // ---- coordinates: check both sheets, tram row first then call rows ----
+  let lat, lon;
+  const tramCoord = findCoordIndices(DB.tramHeaders);
+  if(tramRow && tramCoord.latIdx!==-1 && tramCoord.lonIdx!==-1){
+    lat = tramRow[DB.tramHeaders[tramCoord.latIdx]];
+    lon = tramRow[DB.tramHeaders[tramCoord.lonIdx]];
+  }
+  if((lat===undefined || lat==="" || lon===undefined || lon==="") && callRowsList.length){
+    const callCoord = findCoordIndices(DB.callHeaders);
+    if(callCoord.latIdx!==-1 && callCoord.lonIdx!==-1){
+      lat = callRowsList[0][DB.callHeaders[callCoord.latIdx]];
+      lon = callRowsList[0][DB.callHeaders[callCoord.lonIdx]];
+    }
+  }
+  const hasCoord = isNum(lat) && isNum(lon) && Number(lat)!==0 && Number(lon)!==0;
+  const coordStr = hasCoord ? `${lat}, ${lon}` : "";
+  const mapsUrl = hasCoord ? `https://www.google.com/maps?q=${lat},${lon}` : "";
+
+  // ---- sector cards ----
+  let sectorCardsHtml = "";
+  const heightGroundIdx = findHeaderIndex(DB.callHeaders, ["độ cao aau 5g so với mặt đất (m)","độ cao aau 5g so với mặt đất"]);
+  const heightPoleIdx = findHeaderIndex(DB.callHeaders, ["độ cao aau 5g so với chân cột (m)","độ cao aau 5g so với chân cột"]);
+  const azimuthIdx = findHeaderIndex(DB.callHeaders, ["azimuth aau 5g","azimuth"]);
+  const tiltCoIdx = findHeaderIndex(DB.callHeaders, ["tilt cơ"]);
+  const tiltDienIdx = findHeaderIndex(DB.callHeaders, ["tilt điện"]);
+  const gpsIdx = findHeaderIndex(DB.callHeaders, ["độ cao treo gps so với chân cột (m)","độ cao treo gps so với chân cột"]);
+
+  if(callRowsList.length){
+    sectorCardsHtml = `<div class="sector-grid">` + callRowsList.map(row=>{
+      const label = sectorKey ? getSectorLabel(row[sectorKey], upper) : "?";
+      const az = azimuthIdx!==-1 ? row[DB.callHeaders[azimuthIdx]] : "";
+      const hGround = heightGroundIdx!==-1 ? row[DB.callHeaders[heightGroundIdx]] : "";
+      const hPole = heightPoleIdx!==-1 ? row[DB.callHeaders[heightPoleIdx]] : "";
+      const tiltCo = tiltCoIdx!==-1 ? row[DB.callHeaders[tiltCoIdx]] : "";
+      const tiltDien = tiltDienIdx!==-1 ? row[DB.callHeaders[tiltDienIdx]] : "";
+      const gps = gpsIdx!==-1 ? row[DB.callHeaders[gpsIdx]] : "";
+      return `<div class="sector-card">
+        <span class="sector-num">SECTOR ${escapeHtml(label)}</span>
+        <div class="az-big">${isNum(az)?az+"°":"—"}</div>
+        <div class="az-label">Azimuth</div>
+        <div class="mini-row"><span>Độ cao AAU (mặt đất)</span><span>${isNum(hGround)?hGround+" m":"—"}</span></div>
+        <div class="mini-row"><span>Độ cao AAU (chân cột)</span><span>${isNum(hPole)?hPole+" m":"—"}</span></div>
+        <div class="mini-row"><span>Tilt cơ / điện</span><span>${isNum(tiltCo)?tiltCo:"—"}° / ${isNum(tiltDien)?tiltDien:"—"}°</span></div>
+        <div class="mini-row"><span>Độ cao treo GPS</span><span>${isNum(gps)?gps+" m":"—"}</span></div>
+      </div>`;
+    }).join("") + `</div>`;
+  } else {
+    sectorCardsHtml = `<p style="font-size:13px;color:var(--ink-soft);margin:0">Không có dữ liệu Call Off 5G cho trạm này.</p>`;
+  }
+
+  // ---- full detail table (all CALL OFF columns, so new columns auto-appear) ----
+  let detailTableHtml = "";
+  if(callRowsList.length){
+    detailTableHtml = `<div class="table-scroll"><table class="detail">
+      <thead><tr>${DB.callHeaders.map(h=>`<th>${escapeHtml(h)}</th>`).join("")}</tr></thead>
+      <tbody>${callRowsList.map(row=>`<tr>${DB.callHeaders.map(h=>`<td>${escapeHtml(row[h])}</td>`).join("")}</tr>`).join("")}</tbody>
+    </table></div>`;
+  }
+
+  // ---- DS TRẠM info grid (all columns, generic) ----
+  let tramInfoHtml = "";
+  if(tramRow){
+    tramInfoHtml = `<div class="info-grid">` + DB.tramHeaders.map(h=>{
+      const v = tramRow[h];
+      const isCode = norm(h).includes(norm(CONFIG.stationCodeAliases[0])) || norm(h).includes(norm(CONFIG.stationCodeAliases[1]));
+      return `<div class="info-item">
+        <div class="label">${escapeHtml(h)}</div>
+        <div class="value ${isCode?"mono":""}">${v!==""&&v!==undefined&&v!==null ? escapeHtml(v) : "—"}</div>
+      </div>`;
+    }).join("") + `</div>`;
+  } else {
+    tramInfoHtml = `<p style="font-size:13px;color:var(--ink-soft);margin:0">Không có dữ liệu trong sheet "${escapeHtml(CONFIG.sheetTram)}" cho trạm này.</p>`;
+  }
+
+  const sectorCount = callRowsList.length;
+
+  area.innerHTML = `
+  <div class="result">
+    <div class="station-head">
+      <div>
+        <h2>${escapeHtml(upper)}</h2>
+        <div class="province">${province ? escapeHtml(province)+" · " : ""}${sectorCount} sector</div>
+      </div>
+      <div class="counts">
+        ${tramRow ? '<span class="pill">Có trong DS TRẠM</span>' : '<span class="pill" style="background:#fbf1de;color:#7a5205;border-color:#f0dcb0">Không có trong DS TRẠM</span>'}
+      </div>
+    </div>
+
+    ${hasCoord ? `
+    <div class="card">
+      <div class="card-head"><h3>Tọa độ GPS</h3></div>
+      <div class="card-body">
+        <div class="coord-row">
+          <div class="coord-value" id="coordText">${escapeHtml(coordStr)}</div>
+          <div class="coord-actions">
+            <button class="btn" id="copyCoordBtn">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+              Sao chép
+            </button>
+            <a class="btn primary" href="${mapsUrl}" target="_blank" rel="noopener">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+              Mở Google Maps
+            </a>
+          </div>
+        </div>
+      </div>
+    </div>` : ``}
+
+    <div class="card">
+      <div class="card-head"><h3>Sector &amp; Azimuth — Call Off 5G</h3></div>
+      <div class="card-body">${sectorCardsHtml}</div>
+      ${callRowsList.length ? `<details class="extra">
+        <summary><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg> Xem bảng chi tiết đầy đủ (tự động gồm cả cột mới nếu có)</summary>
+        ${detailTableHtml}
+      </details>` : ``}
+    </div>
+
+    <div class="card">
+      <div class="card-head"><h3>Thông tin trạm — Sheet "${escapeHtml(CONFIG.sheetTram)}"</h3></div>
+      <div class="card-body">${tramInfoHtml}</div>
+    </div>
+  </div>`;
+
+  const copyBtn = document.getElementById("copyCoordBtn");
+  if(copyBtn){
+    copyBtn.addEventListener("click", ()=> copyText(coordStr, "Đã sao chép tọa độ"));
+  }
+}
+
+/* ============================================================
+   SUGGEST / AUTOCOMPLETE
+   ============================================================ */
+let activeSuggestIdx = -1;
+function renderSuggest(query){
+  const box = document.getElementById("suggest");
+  const q = normCode(query);
+  if(!q){ box.style.display="none"; box.innerHTML=""; return; }
+  const matches = DB.allCodes.filter(c=>c.includes(q)).slice(0,8);
+  if(matches.length===0){ box.style.display="none"; box.innerHTML=""; return; }
+  box.innerHTML = matches.map((c,i)=>{
+    const inTram = DB.tramIndex.has(c);
+    const sectors = (DB.callIndex.get(c)||[]).length;
+    return `<button data-code="${escapeHtml(c)}" class="${i===activeSuggestIdx?'active':''}">
+      <span>${escapeHtml(c)}</span>
+      <span class="tag">${sectors} sector${inTram?'':' · chưa có ở DS TRẠM'}</span>
+    </button>`;
+  }).join("");
+  box.style.display = "block";
+  box.querySelectorAll("button").forEach(btn=>{
+    btn.addEventListener("click", ()=>{
+      document.getElementById("searchInput").value = btn.dataset.code;
+      box.style.display="none";
+      doSearch(btn.dataset.code);
+    });
+  });
+}
+
+function doSearch(code){
+  code = (code||"").trim();
+  if(!code) return;
+  document.getElementById("clearSearch").style.display = "flex";
+  renderResults(code);
+  document.getElementById("suggest").style.display = "none";
+  history.replaceState(null,"","#"+encodeURIComponent(normCode(code)));
+}
+
+/* ============================================================
+   FILE LOADING
+   ============================================================ */
+function activateApp(fileLabel){
+  DB.fileName = fileLabel;
+  document.getElementById("emptyState").style.display = "none";
+  document.getElementById("app").style.display = "block";
+  document.getElementById("footerNote").style.display = "block";
+  document.getElementById("sheetMeta").textContent =
+    `${DB.allCodes.length.toLocaleString('vi-VN')} trạm · ${fileLabel}`;
+  const fs = document.getElementById("fileStatus");
+  fs.classList.add("ok");
+  document.getElementById("fileStatusText").textContent = fileLabel;
+  document.getElementById("clearDataBtn").style.display = "inline-flex";
+
+  const hash = decodeURIComponent(location.hash.replace(/^#/,""));
+  if(hash){
+    document.getElementById("searchInput").value = hash;
+    doSearch(hash);
+  }
+}
+
+function loadFromArrayBuffer(buf, label){
+  const wb = XLSX.read(buf, {type:"array"});
+  const parsed = parseWorkbook(wb);
+  Object.assign(DB, parsed);
+  activateApp(label);
+}
+
+function handleFile(file){
+  const reader = new FileReader();
+  reader.onload = function(e){
+    try{
+      loadFromArrayBuffer(e.target.result, file.name);
+      // cache to localStorage for next visit
+      try{
+        const b64 = arrayBufferToBase64(e.target.result);
+        localStorage.setItem(CONFIG.storageKey, JSON.stringify({name:file.name, data:b64, ts:Date.now()}));
+      }catch(err){ console.warn("Không lưu được cache local (file có thể quá lớn):", err); }
+    }catch(err){
+      alert("Lỗi đọc file: " + err.message);
+      console.error(err);
+    }
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+function arrayBufferToBase64(buffer){
+  let binary = "";
+  const bytes = new Uint8Array(buffer);
+  const chunk = 0x8000;
+  for(let i=0;i<bytes.length;i+=chunk){
+    binary += String.fromCharCode.apply(null, bytes.subarray(i,i+chunk));
+  }
+  return btoa(binary);
+}
+function base64ToArrayBuffer(b64){
+  const binary = atob(b64);
+  const bytes = new Uint8Array(binary.length);
+  for(let i=0;i<binary.length;i++) bytes[i] = binary.charCodeAt(i);
+  return bytes.buffer;
+}
+
+function tryLoadCached(){
+  try{
+    const cached = JSON.parse(localStorage.getItem(CONFIG.storageKey) || "null");
+    if(cached && cached.data){
+      const buf = base64ToArrayBuffer(cached.data);
+      loadFromArrayBuffer(buf, cached.name + " (đã lưu)");
+      return true;
+    }
+  }catch(err){
+    console.warn("Không đọc được cache:", err);
+  }
+  return false;
+}
+
+// tải file Excel mặc định đi kèm repo (data/TH_Calloff_5G.xlsx) khi chưa có file người dùng tự upload
+function tryLoadDefaultFile(){
+  if(!CONFIG.defaultFileUrl) return;
+  fetch(CONFIG.defaultFileUrl)
+    .then(res=>{
+      if(!res.ok) throw new Error("HTTP "+res.status);
+      return res.arrayBuffer();
+    })
+    .then(buf=>{
+      loadFromArrayBuffer(buf, CONFIG.defaultFileLabel);
+    })
+    .catch(err=>{
+      // không có file mặc định (hoặc đang mở file:// nên trình duyệt chặn fetch) — vẫn ổn, người dùng tự tải file lên
+      console.warn("Không tải được file mặc định:", err.message);
+    });
+}
+
+document.getElementById("resetDefaultBtn").addEventListener("click", ()=>{
+  if(!confirm("Xóa file đã lưu và quay lại dùng file mặc định trong repo?")) return;
+  localStorage.removeItem(CONFIG.storageKey);
+  location.hash = "";
+  tryLoadDefaultFile();
+});
+
+/* ============================================================
+   EVENTS
+   ============================================================ */
+document.getElementById("fileInput").addEventListener("change", e=>{
+  if(e.target.files[0]) handleFile(e.target.files[0]);
+});
+
+document.getElementById("clearDataBtn").addEventListener("click", ()=>{
+  if(!confirm("Xóa dữ liệu file đã lưu trên trình duyệt này?")) return;
+  localStorage.removeItem(CONFIG.storageKey);
+  location.reload();
+});
+
+document.getElementById("searchInput").addEventListener("input", e=>{
+  activeSuggestIdx = -1;
+  renderSuggest(e.target.value);
+  document.getElementById("clearSearch").style.display = e.target.value ? "flex" : "none";
+});
+document.getElementById("searchInput").addEventListener("keydown", e=>{
+  const box = document.getElementById("suggest");
+  const items = box.querySelectorAll("button");
+  if(e.key==="ArrowDown" && items.length){
+    e.preventDefault();
+    activeSuggestIdx = Math.min(activeSuggestIdx+1, items.length-1);
+    renderSuggest(e.target.value);
+  } else if(e.key==="ArrowUp" && items.length){
+    e.preventDefault();
+    activeSuggestIdx = Math.max(activeSuggestIdx-1, 0);
+    renderSuggest(e.target.value);
+  } else if(e.key==="Enter"){
+    if(activeSuggestIdx>=0 && items[activeSuggestIdx]){
+      const code = items[activeSuggestIdx].dataset.code;
+      e.target.value = code;
+      doSearch(code);
+    } else {
+      doSearch(e.target.value);
+    }
+  } else if(e.key==="Escape"){
+    box.style.display="none";
+  }
+});
+document.getElementById("searchBtn").addEventListener("click", ()=>{
+  doSearch(document.getElementById("searchInput").value);
+});
+document.getElementById("clearSearch").addEventListener("click", ()=>{
+  const input = document.getElementById("searchInput");
+  input.value = "";
+  input.focus();
+  document.getElementById("clearSearch").style.display = "none";
+  document.getElementById("suggest").style.display = "none";
+});
+document.addEventListener("click", e=>{
+  if(!e.target.closest(".search-wrap")) document.getElementById("suggest").style.display = "none";
+});
+
+/* drag & drop anywhere */
+["dragenter","dragover"].forEach(evt=>{
+  document.addEventListener(evt, e=>{
+    e.preventDefault();
+    if(e.dataTransfer && Array.from(e.dataTransfer.items||[]).some(it=>it.kind==="file")){
+      document.getElementById("dropzone").classList.add("active");
+    }
+  });
+});
+["dragleave","drop"].forEach(evt=>{
+  document.addEventListener(evt, e=>{
+    if(evt==="drop") e.preventDefault();
+    document.getElementById("dropzone").classList.remove("active");
+  });
+});
+document.addEventListener("drop", e=>{
+  e.preventDefault();
+  const f = e.dataTransfer.files[0];
+  if(f) handleFile(f);
+});
+
+/* init: dùng file người dùng đã tự upload trước đó (lưu local) nếu có, không thì tải file mặc định trong repo */
+if(!tryLoadCached()){
+  tryLoadDefaultFile();
+}
+
+})();
+</script>
+</body>
+</html>
